@@ -61,7 +61,7 @@ function checkMailingList(SeniorID, relativeEmail) {
       readHTMLFile('./welcome.html', function(err, html) {
         var template = handlebars.compile(html);
         var replacements = {
-          img_ref: "<img src=https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='" + SeniorID + "'>" + "</img>"
+          img_ref: "<img src=https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='" + SeniorID + "'>" + "</img>"
         }
         var htmlToSend = template(replacements);
         var mailOptions = {
