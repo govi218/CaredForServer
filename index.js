@@ -6,8 +6,6 @@ var fs = require('fs');
 var handlebars = require('handlebars');
 var http = require('http');
 var querystring = require('querystring');
-var jsdom = require('jsdom');
-;
 
 // set credentials for firebase
 admin.initializeApp({
@@ -42,11 +40,56 @@ var db = admin.database();
 var snrRef = db.ref('senior');
 var mailRef = db.ref('mailList')
 
+mailRef.on("child_changed", function(snapshot) {
+  var update = snapshot.val();
+  var key = snapshot.key;
+  if (!(JSON.stringify(snapshot.val()).indexOf("push") == -1)){
+    if(!(update.updates.push === "")) {
+      console.log('before update: ' + update);
+      sendCareUpdate(update, key);
+    }
+  }
+});
+
 snrRef.on('child_added', function (snapshot) {
   var snr = snapshot.val();
   console.log('before' + snr.seniorID + snr.relativeEmail);
   checkMailingList(snr.seniorID, snr.relativeEmail);
 });
+
+function sendCareUpdate(update, key) {
+
+  snrRef.child(key).once('value', function(snr_snap) {
+    
+    var snr = snr_snap.val();
+    console.log('after, ');
+    readHTMLFile('./care_update.html', function(err, html) {
+      var template = handlebars.compile(html);
+      console.log(JSON.stringify(update.updates.activities));
+      var replacements = {
+        snr_name:"<b> " + snr.firstName + ' ' + snr.lastName + " <b>",
+        tags: "<b> Tags: </b>" + JSON.stringify(update.updates.activities.activity),
+        comments:"<b> Comments: </b>" + JSON.stringify(update.updates.activities.caretakerComments)
+      }
+      var htmlToSend = template(replacements);
+      var mailOptions = {
+        from: 'welcome@caredforapp.ca',
+        to: update.updateEmail,
+        subject: 'Care Update',
+        html: htmlToSend
+      };
+      
+      transporter.sendMail(mailOptions, function(err, info) {
+        if(err){
+            return console.log(err);
+        }
+        console.log('Message sent: ' + info.response);
+        console.log("AND FINALLY, ");
+        mailRef.child(key).child("updates").remove();
+      });
+    });
+  });
+}
 
 // listen for new updates in mailing list
 function checkMailingList(SeniorID, relativeEmail) {  
@@ -95,7 +138,11 @@ handlebars.registerHelper('link', function(text, seniorID) {
   );
 });
 
-/* Optional features */
+
+
+
+
+/* *******POTENTIAL FEATURES/HELPERS****** */
 
 // Method to make POST request to QR code api
 
